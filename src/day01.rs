@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 
 /// Turning direction of a step
@@ -59,31 +60,17 @@ pub enum Direction {
 }
 
 impl Direction {
-    /// Returns the direction left of us
-    fn left(&self) -> Direction {
-        match *self {
-            Direction::North => Direction::West,
-            Direction::East => Direction::North,
-            Direction::South => Direction::East,
-            Direction::West => Direction::South,
-        }
-    }
-
-    /// Returns the direction right of us
-    fn right(&self) -> Direction {
-        match *self {
-            Direction::North => Direction::East,
-            Direction::East => Direction::South,
-            Direction::South => Direction::West,
-            Direction::West => Direction::North,
-        }
-    }
-
     /// Returns the cardinal direction after turning in the given turning direction
     fn turn(&self, turn: &Turn) -> Direction {
-        match *turn {
-            Turn::Left => self.left(),
-            Turn::Right => self.right(),
+        match (turn, self) {
+            (&Turn::Left, &Direction::North) => Direction::West,
+            (&Turn::Left, &Direction::East) => Direction::North,
+            (&Turn::Left, &Direction::South) => Direction::East,
+            (&Turn::Left, &Direction::West) => Direction::South,
+            (&Turn::Right, &Direction::North) => Direction::East,
+            (&Turn::Right, &Direction::East) => Direction::South,
+            (&Turn::Right, &Direction::South) => Direction::West,
+            (&Turn::Right, &Direction::West) => Direction::North,
         }
     }
 }
@@ -94,36 +81,53 @@ pub struct Position {
     x: i32,
     y: i32,
     direction: Direction,
+    visited: HashSet<(i32, i32)>,
 }
 
 impl Position {
-    /// Returns a new position at location 0,0 facing north
+    /// Create a position at starting location 0,0, facing north
     fn new() -> Position {
-        Position { x: 0, y: 0, direction: Direction::North }
+        Position { x: 0, y: 0, direction: Direction::North, visited: HashSet::new() }
     }
 
-    /// Returns the position after walking the given steps from the starting location
-    fn walked(steps: &[Step]) -> Position {
+    /// Create a position that has walked the given steps from the starting location
+    fn walked(steps: &[Step], until_visited_twice: bool) -> Position {
         let mut pos = Position::new();
-        pos.walk(steps);
+        pos.walk(steps, until_visited_twice);
         pos
     }
 
-    /// Turns and walks accordingly to the given step instruction
-    fn step(&mut self, step: &Step) {
+    /// Go to the given relative location. Returns true if we've been there before
+    fn goto(&mut self, dx: i32, dy: i32) -> bool {
+        self.x += dx;
+        self.y += dy;
+        let res = !self.visited.insert((self.x, self.y));
+        res
+    }
+
+    /// Turns and walks accordingly to the given step instruction. If `until_visited_twice`
+    /// is true, only walk until a location is hit that we've been before and return true.
+    fn step(&mut self, step: &Step, until_visited_twice: bool) -> bool {
         self.direction = self.direction.turn(&step.turn);
-        match self.direction {
-            Direction::North => self.y += step.dist,
-            Direction::East => self.x += step.dist,
-            Direction::South => self.y -= step.dist,
-            Direction::West => self.x -= step.dist,
+        for _ in 0..step.dist {
+            if match self.direction {
+                Direction::North => self.goto(0, 1),
+                Direction::East => self.goto(1, 0),
+                Direction::South => self.goto(0, -1),
+                Direction::West => self.goto(-1, 0),
+            } && until_visited_twice {
+                return true;
+            }
         }
+        false
     }
 
     /// Walk the path given by a slice of step instructions
-    fn walk(&mut self, steps: &[Step]) {
+    fn walk(&mut self, steps: &[Step], until_visited_twice: bool) {
         for step in steps {
-            self.step(&step);
+            if self.step(&step, until_visited_twice) && until_visited_twice {
+                return;
+            }
         }
     }
 
@@ -135,8 +139,10 @@ impl Position {
 
 fn main() {
     let steps = Step::parse(include_str!("day01.txt")).unwrap();
-    let pos = Position::walked(&steps);
+    let pos = Position::walked(&steps, false);
     println!("Distance to easter bunny: {}", pos.distance());
+    let pos = Position::walked(&steps, true);
+    println!("Distance to easter bunny (until visited twice): {}", pos.distance());
 }
 
 
@@ -154,10 +160,16 @@ mod tests {
     #[test]
     fn distance() {
         let steps = Step::parse("R2, L3").unwrap();
-        assert_eq!(Position::walked(&steps).distance(), 5);
+        assert_eq!(Position::walked(&steps, false).distance(), 5);
         let steps = Step::parse("R2, R2, R2").unwrap();
-        assert_eq!(Position::walked(&steps).distance(), 2);
+        assert_eq!(Position::walked(&steps, false).distance(), 2);
         let steps = Step::parse("R5, L5, R5, R3").unwrap();
-        assert_eq!(Position::walked(&steps).distance(), 12);
+        assert_eq!(Position::walked(&steps, false).distance(), 12);
+    }
+
+    #[test]
+    fn distance_until_visited_twice() {
+        let steps = Step::parse("R8, R4, R4, R8").unwrap();
+        assert_eq!(Position::walked(&steps, true).distance(), 4);
     }
 }
