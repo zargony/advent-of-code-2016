@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::iter::FromIterator;
 
 /// Directional move
 #[derive(Debug, PartialEq, Eq)]
@@ -31,42 +31,80 @@ impl Move {
     }
 }
 
-/// A 3x3 keypad
+/// A generic keypad
 #[derive(Debug, PartialEq, Eq)]
-pub struct Keypad;
+pub struct Keypad<'a>(&'a [&'a [Option<char>]]);
 
-impl Keypad {
-    /// Return the button in the given direction
-    fn step(btn: u8, m: &Move) -> u8 {
-        match *m {
-            Move::Up => if btn > 3 { btn - 3 } else { btn },
-            Move::Down => if btn < 7 { btn + 3 } else { btn },
-            Move::Left => if (btn - 1) % 3 > 0 { btn - 1 } else { btn },
-            Move::Right => if (btn - 1) % 3 < 2 { btn + 1 } else { btn },
+impl<'a> Keypad<'a> {
+    /// Create a 3x3 keypad
+    fn new_3x3() -> Keypad<'static> {
+        const BUTTONS_3X3: &'static [&'static [Option<char>]] = &[
+            &[Some('1'), Some('2'), Some('3')],
+            &[Some('4'), Some('5'), Some('6')],
+            &[Some('7'), Some('8'), Some('9')]
+        ];
+        Keypad(BUTTONS_3X3)
+    }
+
+    /// Create a bathroom keypad
+    fn new_bathroom() -> Keypad<'static> {
+        const BUTTONS_BATHROOM: &'static [&'static [Option<char>]] = &[
+            &[None,      None,      Some('1'), None,      None     ],
+            &[None,      Some('2'), Some('3'), Some('4'), None     ],
+            &[Some('5'), Some('6'), Some('7'), Some('8'), Some('9')],
+            &[None,      Some('A'), Some('B'), Some('C'), None     ],
+            &[None,      None,      Some('D'), None,      None     ],
+        ];
+        Keypad(BUTTONS_BATHROOM)
+    }
+
+    /// Find coordinates of given button. Button must not appear more than once
+    fn find(&self, btn: char) -> Option<(usize, usize)> {
+        for (y, row) in self.0.iter().enumerate() {
+            for (x, ch) in row.iter().enumerate() {
+                if *ch == Some(btn) {
+                    return Some((x, y));
+                }
+            }
         }
+        None
+    }
+
+    /// Return the button in the given direction
+    fn step(&self, btn: char, m: &Move) -> Option<char> {
+        self.find(btn).and_then(|(mut x, mut y)| {
+            match *m {
+                Move::Up => if y > 0 { y -= 1; },
+                Move::Down => if y < self.0.len() - 1 { y += 1; },
+                Move::Left => if x > 0 { x -= 1; },
+                Move::Right => if x < self.0[0].len() - 1 { x += 1; },
+            }
+            self.0[y][x]
+        })
     }
 
     /// Return the button after walking the given path
-    fn walk(btn: u8, moves: &[Move]) -> u8 {
-        moves.iter().fold(btn, |btn, m| Keypad::step(btn, m))
+    fn walk(&self, btn: char, moves: &[Move]) -> char {
+        moves.iter().fold(btn, |btn, m| self.step(btn, m).unwrap_or(btn))
     }
 
     /// Return the buttons after walking the given paths
-    fn walk_n(mut btn: u8, moves: &[Vec<Move>]) -> Vec<u8> {
-        moves.iter().map(|ms| { btn = Keypad::walk(btn, ms); btn }).collect()
+     fn walk_n(&self, mut btn: char, moves: &[Vec<Move>]) -> Vec<char> {
+        moves.iter().map(|ms| { btn = self.walk(btn, ms); btn }).collect()
     }
 
     /// Return the buttons after walking the given paths as a string
-    fn walk_n_str(btn: u8, moves: &[Vec<Move>]) -> String {
-        Keypad::walk_n(btn, moves).iter().fold(String::new(), |mut s, b| {
-            s.write_fmt(format_args!("{}", b)).unwrap(); s
-        })
+    fn walk_n_str(&self, btn: char, moves: &[Vec<Move>]) -> String {
+        String::from_iter(self.walk_n(btn, moves).into_iter())
     }
 }
 
 fn main() {
     let moves = Move::parse_lines(include_str!("day02.txt"));
-    println!("Bathroom code: {}", Keypad::walk_n_str(5, &moves));
+    let kp = Keypad::new_3x3();
+    println!("Bathroom code: {}", kp.walk_n_str('5', &moves));
+    let kp = Keypad::new_bathroom();
+    println!("Correct bathroom code: {}", kp.walk_n_str('5', &moves));
 }
 
 #[cfg(test)]
@@ -82,31 +120,50 @@ mod tests {
     }
 
     #[test]
-    fn button_arrangement() {
-        fn assert_4dir(btn: u8, up: u8, down: u8, left: u8, right: u8) {
-            assert_eq!(Keypad::step(btn, &Move::Up), up);
-            assert_eq!(Keypad::step(btn, &Move::Down), down);
-            assert_eq!(Keypad::step(btn, &Move::Left), left);
-            assert_eq!(Keypad::step(btn, &Move::Right), right);
+    fn button_arrangement_3x3() {
+        fn assert_4dir(kp: &Keypad, btn: char, up: char, down: char, left: char, right: char) {
+            assert_eq!(kp.step(btn, &Move::Up), Some(up));
+            assert_eq!(kp.step(btn, &Move::Down), Some(down));
+            assert_eq!(kp.step(btn, &Move::Left), Some(left));
+            assert_eq!(kp.step(btn, &Move::Right), Some(right));
         }
-        assert_4dir(1, 1, 4, 1, 2);
-        assert_4dir(3, 3, 6, 2, 3);
-        assert_4dir(5, 2, 8, 4, 6);
-        assert_4dir(7, 4, 7, 7, 8);
-        assert_4dir(9, 6, 9, 8, 9);
+        let kp = Keypad::new_3x3();
+        assert_4dir(&kp, '1', '1', '4', '1', '2');
+        assert_4dir(&kp, '3', '3', '6', '2', '3');
+        assert_4dir(&kp, '5', '2', '8', '4', '6');
+        assert_4dir(&kp, '7', '4', '7', '7', '8');
+        assert_4dir(&kp, '9', '6', '9', '8', '9');
     }
 
     #[test]
     fn walking() {
-        assert_eq!(Keypad::walk(5, &Move::parse("ULL")), 1);
-        assert_eq!(Keypad::walk(1, &Move::parse("RRDDD")), 9);
-        assert_eq!(Keypad::walk(9, &Move::parse("LURDL")), 8);
-        assert_eq!(Keypad::walk(8, &Move::parse("UUUUD")), 5);
+        let kp = Keypad::new_3x3();
+        assert_eq!(kp.walk('5', &Move::parse("ULL")), '1');
+        assert_eq!(kp.walk('1', &Move::parse("RRDDD")), '9');
+        assert_eq!(kp.walk('9', &Move::parse("LURDL")), '8');
+        assert_eq!(kp.walk('8', &Move::parse("UUUUD")), '5');
     }
 
     #[test]
     fn walking_n() {
-        assert_eq!(Keypad::walk_n(5, &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), [1, 9, 8, 5]);
-        assert_eq!(Keypad::walk_n_str(5, &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), "1985");
+        let kp = Keypad::new_3x3();
+        assert_eq!(kp.walk_n('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), ['1', '9', '8', '5']);
+        assert_eq!(kp.walk_n_str('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), "1985");
+    }
+
+    #[test]
+    fn bathroom_walking() {
+        let kp = Keypad::new_bathroom();
+        assert_eq!(kp.walk('5', &Move::parse("ULL")), '5');
+        assert_eq!(kp.walk('5', &Move::parse("RRDDD")), 'D');
+        assert_eq!(kp.walk('D', &Move::parse("LURDL")), 'B');
+        assert_eq!(kp.walk('B', &Move::parse("UUUUD")), '3');
+    }
+
+    #[test]
+    fn bathroom_walking_n() {
+        let kp = Keypad::new_bathroom();
+        assert_eq!(kp.walk_n('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), ['5', 'D', 'B', '3']);
+        assert_eq!(kp.walk_n_str('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), "5DB3");
     }
 }
