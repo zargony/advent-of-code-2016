@@ -54,12 +54,26 @@ impl<'a> Room<'a> {
     fn is_real(&self) -> bool {
         self.calculate_checksum() == self.checksum
     }
+
+    /// Decrypt room name
+    fn name(&self) -> String {
+        self.encrypted_name.bytes().map(|ch| {
+            let ofs = (self.sector_id % 26) as u8;
+            match ch {
+                b'a'...b'z' => (((ch - b'a' + ofs) % 26) + b'a') as char,
+                b'-' => ' ',
+                _ => panic!("unsupported encryption input"),
+            }
+        }).collect()
+    }
 }
 
 fn main() {
     let rooms = Room::parse(include_str!("day04.txt"));
     let sector_sum = rooms.iter().fold(0, |sum, room| sum + if room.is_real() { room.sector_id } else { 0 });
     println!("Sum of sector ids of real rooms: {}", sector_sum);
+    let sector_id = rooms.iter().find(|room| room.name() == "northpole object storage").unwrap().sector_id;
+    println!("North pole object storage sector id: {}", sector_id);
 }
 
 #[cfg(test)]
@@ -82,5 +96,11 @@ mod tests {
         assert!( rooms[1].is_real());
         assert!( rooms[2].is_real());
         assert!(!rooms[3].is_real());
+    }
+
+    #[test]
+    fn decrypting() {
+        let rooms = Room::parse("qzmt-zixmtkozy-ivhz-343[]");
+        assert_eq!(rooms[0].name(), "very encrypted name");
     }
 }
