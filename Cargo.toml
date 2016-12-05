@@ -6,6 +6,7 @@ description = "Solutions to the Advent of Code 2016 puzzles"
 
 [dependencies]
 itertools = "0.5"
+md5 = "0.2"
 
 [[bin]]
 name = "day01"
@@ -18,3 +19,6 @@ name = "day03"
 
 [[bin]]
 name = "day04"
+
+[[bin]]
+name = "day05"
