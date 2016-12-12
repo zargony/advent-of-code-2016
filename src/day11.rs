@@ -1,17 +1,18 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::fmt;
 
 pub use self::Thing::*;
 
-macro_rules! hashset {
-    () => ( ::std::collections::HashSet::new() );
+macro_rules! set {
+    () => ( ::std::collections::BTreeSet::new() );
     ($($x:expr),*) => ({
-        let mut hashset = ::std::collections::HashSet::new();
-        $(hashset.insert($x);)*
-        hashset
+        let mut set = ::std::collections::BTreeSet::new();
+        $(set.insert($x);)*
+        set
     });
-    ($($x:expr,)*) => ( hashset![$($x),*] )
+    ($($x:expr,)*) => ( set![$($x),*] )
 }
 
 /// Things that can be moved around
@@ -34,7 +35,7 @@ impl fmt::Display for Thing {
 #[derive(PartialEq, Eq, Clone)]
 pub struct State {
     /// Set of things on each floor
-    floors: Vec<HashSet<Thing>>,
+    floors: Vec<BTreeSet<Thing>>,
     /// Position of elevator
     elevator: usize,
 }
@@ -85,7 +86,7 @@ impl Hash for State {
 
 impl State {
     /// Create a state with the given things on each floor
-    fn new(floors: Vec<HashSet<Thing>>) -> State {
+    fn new(floors: Vec<BTreeSet<Thing>>) -> State {
         State { floors: floors, elevator: 0 }
     }
 
@@ -152,7 +153,7 @@ impl State {
     fn min_steps(&self) -> usize {
         let mut states = vec![self.clone()];
         let mut depth = 1;
-        let mut seen = HashSet::new();
+        let mut seen = BTreeSet::new();
         loop {
             // println!("Searching at depth {} ({} states, {} seen)...", depth, states.len(), seen.len());
             let mut new_states = Vec::new();
@@ -163,8 +164,11 @@ impl State {
                         if new_state.is_done() {
                             done = true;
                         }
-                        if !seen.contains(&new_state) {
-                            seen.insert(new_state.clone());
+                        let mut hasher = DefaultHasher::new();
+                        new_state.hash(&mut hasher);
+                        let new_state_hash = hasher.finish();
+                        if !seen.contains(&new_state_hash) {
+                            seen.insert(new_state_hash);
                             new_states.push(new_state);
                         }
                     }
@@ -182,13 +186,13 @@ fn main() {
         // The first floor contains a polonium generator, a thulium generator, a thulium-compatible microchip,
         // a promethium generator, a ruthenium generator, a ruthenium-compatible microchip,
         // a cobalt generator, and a cobalt-compatible microchip.
-        hashset![Generator("Po"), Generator("Tm"), Microchip("Tm"), Generator("Pm"), Generator("Ru"), Microchip("Ru"), Generator("Co"), Microchip("Co")],
+        set![Generator("Po"), Generator("Tm"), Microchip("Tm"), Generator("Pm"), Generator("Ru"), Microchip("Ru"), Generator("Co"), Microchip("Co")],
         // The second floor contains a polonium-compatible microchip and a promethium-compatible microchip.
-        hashset![Microchip("Po"), Microchip("Pm")],
+        set![Microchip("Po"), Microchip("Pm")],
         // The third floor contains nothing relevant.
-        hashset![],
+        set![],
         // The fourth floor contains nothing relevant.
-        hashset![],
+        set![],
     ]);
     println!("Minimum number of steps: {}", state.min_steps());
 }
@@ -199,7 +203,7 @@ mod tests {
 
     #[test]
     fn solving() {
-        let state = State::new(vec![hashset![Microchip("H"), Microchip("L")], hashset![Generator("H")], hashset![Generator("L")], hashset![]]);
+        let state = State::new(vec![set![Microchip("H"), Microchip("L")], set![Generator("H")], set![Generator("L")], set![]]);
         assert!(state.is_valid());
         assert!(!state.is_done());
         assert_eq!(state.min_steps(), 11);
