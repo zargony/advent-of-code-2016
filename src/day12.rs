@@ -99,6 +99,12 @@ impl Cpu {
         Cpu { instructions: Instruction::parse(input), ip: 0, regs: [0; 4] }
     }
 
+    /// Reset CPU
+    fn reset(&mut self) {
+        self.ip = 0;
+        for reg in self.regs.iter_mut() { *reg = 0; }
+    }
+
     /// Step program. Returns true if done
     fn step(&mut self) -> bool {
         if self.ip >= self.instructions.len() {
@@ -133,6 +139,10 @@ fn main() {
     let mut cpu = Cpu::new(include_str!("day12.txt"));
     cpu.run();
     println!("Register a after running: {}", cpu.regs[0]);
+    cpu.reset();
+    cpu.regs[2] = 1;
+    cpu.run();
+    println!("Starting with c=1, register a after running: {}", cpu.regs[0]);
 }
 
 #[cfg(test)]
