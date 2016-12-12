@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::fmt;
+use std::{env, fmt};
 
 pub use self::Thing::*;
 
@@ -182,7 +182,7 @@ impl State {
 }
 
 fn main() {
-    let state = State::new(vec![
+    let mut state = State::new(vec![
         // The first floor contains a polonium generator, a thulium generator, a thulium-compatible microchip,
         // a promethium generator, a ruthenium generator, a ruthenium-compatible microchip,
         // a cobalt generator, and a cobalt-compatible microchip.
@@ -195,6 +195,14 @@ fn main() {
         set![],
     ]);
     println!("Minimum number of steps: {}", state.min_steps());
+    // Don't run the tedious part two on CI
+    if !env::var("CI").is_ok() {
+        state.floors[0].insert(Generator("El"));
+        state.floors[0].insert(Microchip("El"));
+        state.floors[0].insert(Generator("Di"));
+        state.floors[0].insert(Microchip("Di"));
+        println!("Minimum number of steps with extra parts: {}", state.min_steps());
+    }
 }
 
 #[cfg(test)]
