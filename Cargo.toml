@@ -8,6 +8,7 @@ description = "Solutions to the Advent of Code 2016 puzzles"
 itertools = "0.5"
 md5 = "0.2"
 nom = "2"
+time = "0.1"
 onig = "1"
 
 [[bin]]

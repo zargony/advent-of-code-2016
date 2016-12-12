@@ -1,4 +1,5 @@
 extern crate md5;
+extern crate time;
 
 use std::fmt::Write as fmtWrite;
 use std::io::Write as ioWrite;
@@ -73,12 +74,21 @@ fn find_enhanced_password(door_id: &str, len: usize) -> String {
     String::from_utf8(password).unwrap()
 }
 
+/// Measure time
+fn measure_time<T, F: FnMut() -> T>(mut f: F) -> (T, f64) {
+    let start_time = time::precise_time_s();
+    let result = f();
+    let duration = time::precise_time_s() - start_time;
+    (result, duration)
+}
+
 fn main() {
     let input = "wtnhxymk";
-    let password = find_password(input, 8);
-    println!("Password: {}", password);
-    let password = find_enhanced_password(input, 8);
-    println!("Enhanced password: {}", password);
+    let (password, duration1) = measure_time(|| find_password(input, 8));
+    println!("Password (found in {:5.3}s): {}", duration1, password);
+    let (password, duration2) = measure_time(|| find_enhanced_password(input, 8));
+    println!("Enhanced password (found in {:5.3}s): {}", duration2, password);
+    println!("Total time: {:5.3}s", duration1 + duration2);
 }
 
 #[cfg(test)]
