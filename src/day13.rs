@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashSet;
 
 /// A Maze of office cubicles
 pub struct Maze {
@@ -28,7 +29,7 @@ impl Maze {
         MazeDisplay { maze: self, width: width, height: height, path: Some(path) }
     }
 
-    /// Returns a pathfinder that targets the given coordinates
+    /// Returns a pathfinder that iterates all possible paths from the given starting position
     fn pathfinder(&self, x: u32, y: u32, maxdepth: usize) -> PathFinder {
         PathFinder::new(self, x, y, maxdepth)
     }
@@ -61,17 +62,15 @@ impl<'a> fmt::Display for MazeDisplay<'a> {
 /// Maze path finder
 pub struct PathFinder<'a> {
     maze: &'a Maze,
-    target: (u32, u32),
     maxdepth: usize,
     paths: Vec<Vec<(u32, u32)>>,
     pos: usize,
 }
 
 impl<'a> PathFinder<'a> {
-    /// Create new pathfinder that targets the given location, starting at (1,1)
+    /// Create new pathfinder that starts at the given location
     fn new(maze: &Maze, x: u32, y: u32, maxdepth: usize) -> PathFinder {
-        let paths = vec![vec![(1, 1)]];
-        PathFinder { maze: maze, target: (x, y), maxdepth: maxdepth, paths: paths, pos: 0 }
+        PathFinder { maze: maze, maxdepth: maxdepth, paths: vec![vec![(x, y)]], pos: 0 }
     }
 }
 
@@ -79,20 +78,13 @@ impl<'a> Iterator for PathFinder<'a> {
     type Item = Vec<(u32, u32)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while !self.paths.is_empty() {
-            while self.pos < self.paths.len() {
-                let path = self.paths[self.pos].clone();    // FIXME: allocation :-(
-                self.pos += 1;
-                if *path.last().unwrap() == self.target {
-                    return Some(path);
-                }
-            }
+        if self.pos >= self.paths.len() && !self.paths.is_empty() {
             fn offset(n: u32, o: i32) -> u32 {
                 if o < 0 { n - (-o) as u32 } else { n + o as u32 }
             }
             let mut new_paths = Vec::new();
             for path in &self.paths {
-                if path.len() >= self.maxdepth { break; }
+                if path.len() > self.maxdepth { break; }
                 let last = path.last().unwrap();
                 for &(dx, dy) in [(-1, 0), (0, -1), (1, 0), (0, 1)].iter() {
                     if dx < 0 && last.0 == 0 { continue; }
@@ -108,16 +100,31 @@ impl<'a> Iterator for PathFinder<'a> {
             self.paths = new_paths;
             self.pos = 0;
         }
-        None
+        if !self.paths.is_empty() {
+            let path = self.paths[self.pos].clone();    // FIXME: allocation :-(
+            self.pos += 1;
+            Some(path)
+        } else {
+            None
+        }
     }
 }
 
 fn main() {
     let maze = Maze::new(1362);
-    //print!("{}", maze.display(50, 25));
-    let path = maze.pathfinder(31, 39, 500).min_by_key(|path| path.len()).unwrap();
-    //print!("{}", maze.display_path(50, 25, &path));
+    //print!("{}", maze.display(50, 50));
+    let path = maze.pathfinder(1, 1, 500).filter(|path|
+        *path.last().unwrap() == (31, 39)
+    ).min_by_key(|path|
+        path.len()
+    ).unwrap();
+    //print!("{}", maze.display_path(50, 50, &path));
     println!("Fewest number of steps to reach 31,39: {}", path.len() - 1);
+
+    let locations = maze.pathfinder(1, 1, 50).fold(HashSet::new(), |mut set, path| {
+        set.insert(*path.last().unwrap()); set
+    });
+    println!("Number of different locations in at most 50 steps: {}", locations.len());
 }
 
 #[cfg(test)]
@@ -133,7 +140,11 @@ mod tests {
     #[test]
     fn pathfinding() {
         let maze = Maze::new(10);
-        let path = maze.pathfinder(7, 4, 100).min_by_key(|path| path.len()).unwrap();
+        let path = maze.pathfinder(1, 1, 50).filter(|path|
+            *path.last().unwrap() == (7,4)
+        ).min_by_key(|path|
+            path.len()
+        ).unwrap();
         assert_eq!(format!("{}", maze.display_path(10, 7, &path)), ".#.####.##\n.O#..#...#\n#OOO.##...\n###O#.###.\n.##OO#OO#.\n..##OOO.#.\n#...##.###\n")
     }
 }
