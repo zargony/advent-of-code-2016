@@ -2,8 +2,18 @@ extern crate md5;
 extern crate onig;
 extern crate time;
 
-use std::env;
+use std::io::Write;
 use onig::Regex;
+
+/// Helper function for displaying a nibble
+#[inline]
+fn nibble2char(n: u8) -> char {
+    match n {
+        0...9 => ('0' as u8 + n) as char,
+        10...15 => ('a' as u8 + n - 10) as char,
+        _ => panic!("nibble must be in range 0..15"),
+    }
+}
 
 /// A hash finder uses a brute force approach to find a MD5 digest
 /// for a given prefix that has 3 or more repeating characters in its
@@ -28,24 +38,31 @@ impl<'a> HashFinder<'a> {
 }
 
 impl<'a> Iterator for HashFinder<'a> {
-    type Item = (u32, Vec<String>);
+    type Item = (u32, usize, char);
 
     /// Finds the next MD5 hexdigest with 3 or more repeating characters
     /// by appending an ever increasing number to the prefix. Yields a
     /// tuple for every match that contains the appended number and
     /// a vector of strings with 3+ repeated characters.
-    fn next(&mut self) -> Option<(u32, Vec<String>)> {
+    fn next(&mut self) -> Option<(u32, usize, char)> {
         loop {
-            let mut hexdigest = format!("{}{}", self.prefix, self.pad);
-            for _ in 0..self.stretch + 1 {
-                hexdigest = format!("{:x}", md5::compute(hexdigest));
+            let mut md5 = md5::Context::new();
+            md5.consume(self.prefix.as_bytes());
+            md5.write_fmt(format_args!("{}", self.pad)).unwrap();
+            let mut digest = md5.compute();
+            for _ in 0..self.stretch {
+                let mut md5 = md5::Context::new();
+                for &b in digest.iter() {
+                    let buf = [nibble2char(b >> 4) as u8, nibble2char(b &0xf) as u8];
+                    md5.consume(&buf);
+                }
+                digest = md5.compute();
             }
+            let hexdigest = format!("{:x}", digest);
             self.pad += 1;
-            let matches: Vec<String> = self.re.find_iter(&hexdigest).map(|(pos1, pos2)| {
-                hexdigest[pos1..pos2].to_owned()
-            }).collect();
-            if !matches.is_empty() {
-                return Some((self.pad - 1, matches));
+            if let Some(cap) = self.re.captures(&hexdigest) {
+                let snippet = cap.at(0).unwrap();
+                return Some((self.pad - 1, snippet.len(), snippet.chars().nth(0).unwrap()));
             }
         }
     }
@@ -54,7 +71,7 @@ impl<'a> Iterator for HashFinder<'a> {
 /// The OTP finder yields valid one-time passwords
 pub struct OTPFinder<'a> {
     finder: HashFinder<'a>,
-    snippets: Vec<(u32, String)>,
+    snippets: Vec<(u32, usize, char)>,
     pos: usize,
 }
 
@@ -72,16 +89,15 @@ impl<'a> Iterator for OTPFinder<'a> {
     fn next(&mut self) -> Option<u32> {
         loop {
             while self.pos >= self.snippets.len() || self.snippets.last().unwrap().0 < self.snippets[self.pos].0 + 1000 {
-                match self.finder.next() {
-                    Some((pad, ss)) => self.snippets.push((pad, ss.into_iter().nth(0).unwrap())),
-                    None => return None,
+                if let Some(snippet) = self.finder.next() {
+                    self.snippets.push(snippet);
                 }
             }
-            let (pad, ref snippet) = self.snippets[self.pos];
+            let (pad, _, ch) = self.snippets[self.pos];
             self.pos += 1;
-            if self.snippets.iter().any(|&(p, ref s)|
-                p > pad && p <= pad+1000 && s.len() >= 5 && s[0..1] == snippet[0..1])
-            {
+            if self.snippets.iter().any(|&(p, l, c)|
+                p > pad && p <= pad+1000 && l >= 5 && c == ch
+            ) {
                 return Some(pad);
             }
         }
@@ -100,33 +116,28 @@ fn main() {
     let mut finder = OTPFinder::new("ahsbgdzn", 0);
     let (pad, duration1) = measure_time(|| finder.nth(63).unwrap());
     println!("Index that produces the 64th key (found in {:5.3}s): {}", duration1, pad);
-
-    // Don't run the tedious part two on CI
-    if !env::var("CI").is_ok() {
-        let mut finder = OTPFinder::new("ahsbgdzn", 2016);
-        let (pad, duration2) = measure_time(|| finder.nth(63).unwrap());
-        println!("Index that produces the 64th streched key (found in {:5.3}s): {}", duration2, pad);
-    }
+    let mut finder = OTPFinder::new("ahsbgdzn", 2016);
+    let (pad, duration2) = measure_time(|| finder.nth(63).unwrap());
+    println!("Index that produces the 64th streched key (found in {:5.3}s): {}", duration2, pad);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
 
     #[test]
     fn finding_digests() {
         let mut finder = HashFinder::new("abc", 0);
-        assert_eq!(finder.next(), Some((18, vec!["888".to_owned()])));
-        assert_eq!(finder.next(), Some((39, vec!["eee".to_owned()])));
-        assert_eq!(finder.skip(6).next(), Some((92, vec!["999".to_owned()])));
+        assert_eq!(finder.next(), Some((18, 3, '8')));
+        assert_eq!(finder.next(), Some((39, 3, 'e')));
+        assert_eq!(finder.skip(6).next(), Some((92, 3, '9')));
     }
 
     #[test]
     fn finding_stretched_digests() {
         let mut finder = HashFinder::new("abc", 2016);
-        assert_eq!(finder.next(), Some((5, vec!["222".to_owned()])));
-        assert_eq!(finder.next(), Some((10, vec!["eee".to_owned()])));
+        assert_eq!(finder.next(), Some((5, 3, '2')));
+        assert_eq!(finder.next(), Some((10, 3, 'e')));
     }
 
     #[test]
@@ -139,11 +150,8 @@ mod tests {
 
     #[test]
     fn finding_stretched_otps() {
-        // Don't run this tedious test on CI
-        if !env::var("CI").is_ok() {
-            let mut finder = OTPFinder::new("abc", 2016);
-            assert_eq!(finder.next(), Some(10));
-            // assert_eq!(finder.skip(62).next(), Some(22551));
-        }
+        let mut finder = OTPFinder::new("abc", 2016);
+        assert_eq!(finder.next(), Some(10));
+        // assert_eq!(finder.skip(62).next(), Some(22551));
     }
 }
