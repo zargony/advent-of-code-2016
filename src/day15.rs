@@ -41,10 +41,21 @@ impl Disc {
     }
 }
 
+/// Find earliest time at which a sphere can pass through all discs
+pub fn time_at_which_sphere_can_pass(discs: &[Disc]) -> u32 {
+    (0..).find(|&t|
+        discs.iter().all(|disc|
+            disc.sphere_can_pass(t)
+        )
+    ).unwrap()
+}
+
 fn main() {
-    let discs = Disc::parse(include_str!("day15.txt"));
-    let t = (0..).find(|&t| discs.iter().all(|d| d.sphere_can_pass(t))).unwrap();
-    println!("Time to press the button to get a capsule: {}", t);
+    let mut discs = Disc::parse(include_str!("day15.txt"));
+    println!("Time to press the button to get a capsule: {}", time_at_which_sphere_can_pass(&discs));
+    let extra_disc = Disc { num: discs.len() as u32 + 1, positions: 11, offset: 0 };
+    discs.push(extra_disc);
+    println!("Time to press the button w/extra disc: {}", time_at_which_sphere_can_pass(&discs));
 }
 
 #[cfg(test)]
@@ -65,5 +76,6 @@ mod tests {
         assert!(!discs[1].sphere_can_pass(0));
         assert!( discs[0].sphere_can_pass(5));
         assert!( discs[1].sphere_can_pass(5));
+        assert_eq!(time_at_which_sphere_can_pass(&discs), 5);
     }
 }
