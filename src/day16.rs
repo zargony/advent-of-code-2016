@@ -82,7 +82,9 @@ impl Data {
 
 fn main() {
     let data = Data::from_str("01000100010010111").unwrap().fill_up(272);
-    println!("Checksum for data: {}", data.checksum());
+    println!("Checksum for data (272): {}", data.checksum());
+    let data = Data::from_str("01000100010010111").unwrap().fill_up(35651584);
+    println!("Checksum for data (35651584): {}", data.checksum());
 }
 
 #[cfg(test)]
