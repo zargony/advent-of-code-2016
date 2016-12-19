@@ -1,37 +1,20 @@
-use std::env;
-use std::collections::VecDeque;
-
 pub fn solve(n: usize) -> usize {
-    let mut elves: Vec<_> = (1..n+1).collect();
-    let mut flag = false;
-    while elves.len() > 1 {
-        elves.retain(|_| {
-            flag = !flag;
-            flag
-        });
-    }
-    elves[0]
+    (2..n+1).fold(0, |winner, nn| (winner + 2) % nn) + 1
 }
 
 pub fn solve2(n: usize) -> usize {
-    let mut elves: VecDeque<_> = (1..n+1).collect();
-    let mut i = 0;
-    while elves.len() > 1 {
-        let target = (i + elves.len() / 2) % elves.len();
-        elves.remove(target);
-        if target < i { i -= 1; }
-        i = (i + 1) % elves.len();
-    }
-    elves[0]
+    (2..n+1).fold(0, |winner, nn| {
+        if nn / 2 - 1 > winner {
+            (winner + 1) % nn
+        } else {
+            (winner + 2) % nn
+        }
+    }) + 1
 }
 
 fn main() {
     println!("Elf that gets all the presents: {}", solve(3005290));
-
-    // Don't run the tedious part two on CI
-    if !env::var("CI").is_ok() {
-        println!("Elf that gets all the presents (new rules): {}", solve2(3005290));
-    }
+    println!("Elf that gets all the presents (new rules): {}", solve2(3005290));
 }
 
 #[cfg(test)]
