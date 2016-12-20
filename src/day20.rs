@@ -20,9 +20,23 @@ pub fn find_lowest(ranges: &[(u32, u32)]) -> u32 {
     n
 }
 
+/// Find amount of numbers not covered by a list of ranges
+pub fn find_uncovered(ranges: &[(u32, u32)]) -> u32 {
+    let mut ranges = ranges.to_owned();
+    ranges.sort_by_key(|n| n.0);
+    let mut upto = 0;
+    let mut count = 0;
+    for (from, to) in ranges {
+        if from > upto { count += from - upto - 1; }
+        if to > upto { upto = to; }
+    }
+    count
+}
+
 fn main() {
     let ranges = parse(include_str!("day20.txt"));
     println!("Lowest non-blocked IP: {}", find_lowest(&ranges));
+    println!("Number of allowed IPs: {}", find_uncovered(&ranges));
 }
 
 #[cfg(test)]
@@ -33,5 +47,11 @@ mod tests {
     fn finding_lowest() {
         let ranges = parse("5-8\n0-2\n4-7");
         assert_eq!(find_lowest(&ranges), 3);
+    }
+
+    #[test]
+    fn finding_uncovered() {
+        let ranges = parse("5-8\n0-2\n4-7");
+        assert_eq!(find_uncovered(&ranges), 1);
     }
 }
