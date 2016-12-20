@@ -4,6 +4,7 @@ extern crate nom;
 use std::str::FromStr;
 use nom::{space, digit};
 
+
 /// An immediate or register value
 #[derive(Debug, PartialEq, Eq)]
 pub enum Value {
@@ -20,6 +21,7 @@ impl Value {
         }
     }
 }
+
 
 /// An assembunny instruction
 #[derive(Debug, PartialEq, Eq)]
@@ -80,10 +82,11 @@ impl FromStr for Instruction {
 
 impl Instruction {
     /// Parse a multiline-text to a vector of instructions
-    fn parse(s: &str) -> Vec<Instruction> {
-        s.lines().map(|line| Instruction::from_str(line).unwrap()).collect()
+    fn parse(s: &str) -> Result<Vec<Instruction>, nom::ErrorKind> {
+        s.lines().map(|line| line.parse()).collect()
     }
 }
+
 
 /// The assembunny CPU
 #[derive(Debug, PartialEq, Eq)]
@@ -95,8 +98,10 @@ pub struct Cpu {
 
 impl Cpu {
     /// Create new CPU
-    fn new(input: &str) -> Cpu {
-        Cpu { instructions: Instruction::parse(input), ip: 0, regs: [0; 4] }
+    fn new(input: &str) -> Result<Cpu, nom::ErrorKind> {
+        Instruction::parse(input).map(|instructions|
+            Cpu { instructions: instructions, ip: 0, regs: [0; 4] }
+        )
     }
 
     /// Reset CPU
@@ -135,8 +140,9 @@ impl Cpu {
     }
 }
 
+
 fn main() {
-    let mut cpu = Cpu::new(include_str!("day12.txt"));
+    let mut cpu = Cpu::new(include_str!("day12.txt")).unwrap();
     cpu.run();
     println!("Register a after running: {}", cpu.regs[0]);
     cpu.reset();
@@ -145,21 +151,26 @@ fn main() {
     println!("Starting with c=1, register a after running: {}", cpu.regs[0]);
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn parsing() {
-        assert_eq!(Instruction::from_str("inc a"), Ok(Instruction::Inc(0)));
-        assert_eq!(Instruction::parse("cpy 41 a\ninc b\ndec c\njnz d 2\njnz 1 -2"),
-            [Instruction::Cpy(Value::Immediate(41), 0), Instruction::Inc(1), Instruction::Dec(2), Instruction::Jnz(Value::Register(3), 2), Instruction::Jnz(Value::Immediate(1), -2)]);
+        assert_eq!("inc a".parse(), Ok(Instruction::Inc(0)));
+        assert_eq!(Instruction::parse("cpy 41 a\ninc b\ndec c\njnz d 2\njnz 1 -2"), Ok(vec![
+            Instruction::Cpy(Value::Immediate(41), 0),
+            Instruction::Inc(1),
+            Instruction::Dec(2),
+            Instruction::Jnz(Value::Register(3), 2),
+            Instruction::Jnz(Value::Immediate(1), -2)
+        ]));
     }
 
     #[test]
     fn running() {
-        let mut cpu = Cpu::new("cpy 41 a\ninc a\ninc a\ndec a\njnz a 2\ndec a");
+        let mut cpu = Cpu::new("cpy 41 a\ninc a\ninc a\ndec a\njnz a 2\ndec a").unwrap();
         cpu.run();
         assert_eq!(cpu.regs[0], 42);
     }

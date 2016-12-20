@@ -5,6 +5,7 @@ extern crate time;
 use std::io::Write;
 use onig::Regex;
 
+
 /// Helper function for displaying a nibble
 #[inline]
 fn nibble2char(n: u8) -> char {
@@ -14,6 +15,7 @@ fn nibble2char(n: u8) -> char {
         _ => panic!("nibble must be in range 0..15"),
     }
 }
+
 
 /// A hash finder uses a brute force approach to find a MD5 digest
 /// for a given prefix that has 3 or more repeating characters in its
@@ -68,6 +70,7 @@ impl<'a> Iterator for HashFinder<'a> {
     }
 }
 
+
 /// The OTP finder yields valid one-time passwords
 pub struct OTPFinder<'a> {
     finder: HashFinder<'a>,
@@ -104,6 +107,7 @@ impl<'a> Iterator for OTPFinder<'a> {
     }
 }
 
+
 /// Measure time
 fn measure_time<T, F: FnMut() -> T>(mut f: F) -> (T, f64) {
     let start_time = time::precise_time_s();
@@ -120,6 +124,7 @@ fn main() {
     let (pad, duration2) = measure_time(|| finder.nth(63).unwrap());
     println!("Index that produces the 64th streched key (found in {:5.3}s): {}", duration2, pad);
 }
+
 
 #[cfg(test)]
 mod tests {

@@ -5,6 +5,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
+
 /// A row of tiles in a room
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Row {
@@ -12,23 +13,27 @@ pub struct Row {
 }
 
 impl FromStr for Row {
-    type Err = ();
+    type Err = &'static str;
 
-    fn from_str(s: &str) -> Result<Row, ()> {
-        Ok(Row {
-            tiles: s.chars().map(|ch| match ch {
-                '.' => false,
-                '^' => true,
-                _ => panic!("invalid tile"),
-            }).collect(),
-        })
+    fn from_str(s: &str) -> Result<Row, &'static str> {
+        let tiles: Result<Vec<bool>, _> = s.chars().map(|ch| match ch {
+            '.' => Ok(false),
+            '^' => Ok(true),
+            _ => Err("Invalid tile format"),
+        }).collect();
+        tiles.map(|tiles|
+            Row { tiles: tiles }
+        )
     }
 }
 
 impl fmt::Display for Row {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for tile in &self.tiles {
-            try!(f.write_str(if *tile { "^" } else { "." }))
+            match *tile {
+                false => try!(f.write_str(".")),
+                true => try!(f.write_str("^")),
+            }
         }
         Ok(())
     }
@@ -46,6 +51,7 @@ impl Row {
         self.tiles.iter().filter(|t| !**t).count()
     }
 }
+
 
 /// Iterator that yiels consecutive rows
 pub struct RowIter {
@@ -76,8 +82,9 @@ impl RowIter {
     }
 }
 
+
 fn main() {
-    let first_row = Row::from_str(include_str!("day18.txt")).unwrap();
+    let first_row: Row = include_str!("day18.txt").parse().unwrap();
     let mut it = RowIter::new(first_row.clone());
     let num_safe_tiles = (0..40).fold(0, |sum, _| sum + it.next().unwrap().num_safe_tiles());
     println!("Number of safe tiles (40 rows): {}", num_safe_tiles);
@@ -86,31 +93,31 @@ fn main() {
     println!("Number of safe tiles (400k rows): {}", num_safe_tiles);
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn example5() {
-        let mut it = RowIter::new(Row::from_str("..^^.").unwrap());
-        assert_eq!(it.next(), Some(Row::from_str("..^^.").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str(".^^^^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^^..^").unwrap()));
+        let mut it = RowIter::new("..^^.".parse().unwrap());
+        assert_eq!(it.next(), Some("..^^.".parse().unwrap()));
+        assert_eq!(it.next(), Some(".^^^^".parse().unwrap()));
+        assert_eq!(it.next(), Some("^^..^".parse().unwrap()));
     }
 
     #[test]
     fn example10() {
-        let mut it = RowIter::new(Row::from_str(".^^.^.^^^^").unwrap());
-        assert_eq!(it.next(), Some(Row::from_str(".^^.^.^^^^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^^^...^..^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^.^^.^.^^.").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("..^^...^^^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str(".^^^^.^^.^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^^..^.^^..").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^^^^..^^^.").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^..^^^^.^^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str(".^^^..^.^^").unwrap()));
-        assert_eq!(it.next(), Some(Row::from_str("^^.^^^..^^").unwrap()));
+        let mut it = RowIter::new(".^^.^.^^^^".parse().unwrap());
+        assert_eq!(it.next(), Some(".^^.^.^^^^".parse().unwrap()));
+        assert_eq!(it.next(), Some("^^^...^..^".parse().unwrap()));
+        assert_eq!(it.next(), Some("^.^^.^.^^.".parse().unwrap()));
+        assert_eq!(it.next(), Some("..^^...^^^".parse().unwrap()));
+        assert_eq!(it.next(), Some(".^^^^.^^.^".parse().unwrap()));
+        assert_eq!(it.next(), Some("^^..^.^^..".parse().unwrap()));
+        assert_eq!(it.next(), Some("^^^^..^^^.".parse().unwrap()));
+        assert_eq!(it.next(), Some("^..^^^^.^^".parse().unwrap()));
+        assert_eq!(it.next(), Some(".^^^..^.^^".parse().unwrap()));
+        assert_eq!(it.next(), Some("^^.^^^..^^".parse().unwrap()));
     }
 }

@@ -17,6 +17,7 @@ fn main() {
     println!("Elf that gets all the presents (new rules): {}", solve2(3005290));
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

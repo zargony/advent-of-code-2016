@@ -1,10 +1,11 @@
-use std::str::FromStr;
+use std::num;
+
 
 /// Parse multiline-text of ranges into a vector of tuples
-pub fn parse(s: &str) -> Vec<(u32, u32)> {
+pub fn parse(s: &str) -> Result<Vec<(u32, u32)>, num::ParseIntError> {
     s.lines().map(|line| {
-        let mut nums = line.split('-').map(|s| u32::from_str(s).unwrap());
-        (nums.next().unwrap(), nums.next().unwrap())
+        let mut nums = line.split('-').map(|s| s.parse::<u32>().unwrap());
+        Ok((nums.next().unwrap(), nums.next().unwrap()))
     }).collect()
 }
 
@@ -34,10 +35,11 @@ pub fn find_uncovered(ranges: &[(u32, u32)]) -> u32 {
 }
 
 fn main() {
-    let ranges = parse(include_str!("day20.txt"));
+    let ranges = parse(include_str!("day20.txt")).unwrap();
     println!("Lowest non-blocked IP: {}", find_lowest(&ranges));
     println!("Number of allowed IPs: {}", find_uncovered(&ranges));
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -45,13 +47,13 @@ mod tests {
 
     #[test]
     fn finding_lowest() {
-        let ranges = parse("5-8\n0-2\n4-7");
+        let ranges = parse("5-8\n0-2\n4-7").unwrap();
         assert_eq!(find_lowest(&ranges), 3);
     }
 
     #[test]
     fn finding_uncovered() {
-        let ranges = parse("5-8\n0-2\n4-7");
+        let ranges = parse("5-8\n0-2\n4-7").unwrap();
         assert_eq!(find_uncovered(&ranges), 1);
     }
 }

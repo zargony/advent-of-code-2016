@@ -1,35 +1,39 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+
 /// A room, described by its encrypted name
 #[derive(Debug, PartialEq, Eq)]
-pub struct Room<'a> {
-    encrypted_name: &'a str,
+pub struct Room {
+    encrypted_name: String,
     sector_id: u32,
-    checksum: &'a str,
+    checksum: String,
 }
 
-impl<'a> From<&'a str> for Room<'a> {
-    fn from(s: &str) -> Room {
-        let ic = s.rfind('[').unwrap();
-        let checksum = &s[ic+1..s.len()-1];
-        let is = s[..ic].rfind('-').unwrap();
-        let sector = u32::from_str(&s[is+1..ic]).unwrap();
-        let name = &s[..is];
-        Room {
-            encrypted_name: name,
-            sector_id: sector,
-            checksum: checksum,
-        }
+impl FromStr for Room {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Room, &'static str> {
+        s.rfind('[').and_then(|ic| {
+            let checksum = s[ic+1..s.len()-1].to_owned();
+            s[..ic].rfind('-').and_then(|is| {
+                let name = s[..is].to_owned();
+                s[is+1..ic].parse().map(|sector|
+                    Room {
+                        encrypted_name: name,
+                        sector_id: sector,
+                        checksum: checksum,
+                    }
+                ).ok()
+            })
+        }).ok_or("Invalid room format")
     }
 }
 
-impl<'a> Room<'a> {
-    /// Parse a text with room descriptions. Panics on parsing errors.
-    fn parse(s: &str) -> Vec<Room> {
-        s.lines().map(|line| {
-            Room::from(line)
-        }).collect()
+impl Room {
+    /// Parse a text with room descriptions
+    fn parse(s: &str) -> Result<Vec<Room>, &'static str> {
+        s.lines().map(|line| line.parse()).collect()
     }
 
     /// Calculate checksum
@@ -56,25 +60,27 @@ impl<'a> Room<'a> {
     }
 
     /// Decrypt room name
-    fn name(&self) -> String {
+    fn name(&self) -> Result<String, &'static str> {
         self.encrypted_name.bytes().map(|ch| {
             let ofs = (self.sector_id % 26) as u8;
             match ch {
-                b'a'...b'z' => (((ch - b'a' + ofs) % 26) + b'a') as char,
-                b'-' => ' ',
-                _ => panic!("unsupported encryption input"),
+                b'a'...b'z' => Ok((((ch - b'a' + ofs) % 26) + b'a') as char),
+                b'-' => Ok(' '),
+                _ => Err("Unsupported encryption format"),
             }
         }).collect()
     }
 }
 
+
 fn main() {
-    let rooms = Room::parse(include_str!("day04.txt"));
-    let sector_sum = rooms.iter().fold(0, |sum, room| sum + if room.is_real() { room.sector_id } else { 0 });
+    let rooms = Room::parse(include_str!("day04.txt")).unwrap();
+    let sector_sum = rooms.iter().filter(|room| room.is_real()).fold(0, |sum, room| sum + room.sector_id);
     println!("Sum of sector ids of real rooms: {}", sector_sum);
-    let sector_id = rooms.iter().find(|room| room.name() == "northpole object storage").unwrap().sector_id;
+    let sector_id = rooms.iter().find(|room| room.name().unwrap() == "northpole object storage").unwrap().sector_id;
     println!("North pole object storage sector id: {}", sector_id);
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -82,16 +88,16 @@ mod tests {
 
     #[test]
     fn parsing() {
-        let rooms = Room::parse("aaaaa-bbb-z-y-x-123[abxyz]\na-b-c-d-e-f-g-h-987[abcde]\nnot-a-real-room-404[oarel]\ntotally-real-room-200[decoy]");
-        assert_eq!(rooms[0], Room { encrypted_name: "aaaaa-bbb-z-y-x", sector_id: 123, checksum: "abxyz" });
-        assert_eq!(rooms[1], Room { encrypted_name: "a-b-c-d-e-f-g-h", sector_id: 987, checksum: "abcde" });
-        assert_eq!(rooms[2], Room { encrypted_name: "not-a-real-room", sector_id: 404, checksum: "oarel" });
-        assert_eq!(rooms[3], Room { encrypted_name: "totally-real-room", sector_id: 200, checksum: "decoy" });
+        let rooms = Room::parse("aaaaa-bbb-z-y-x-123[abxyz]\na-b-c-d-e-f-g-h-987[abcde]\nnot-a-real-room-404[oarel]\ntotally-real-room-200[decoy]").unwrap();
+        assert_eq!(rooms[0], Room { encrypted_name: "aaaaa-bbb-z-y-x".to_owned(), sector_id: 123, checksum: "abxyz".to_owned() });
+        assert_eq!(rooms[1], Room { encrypted_name: "a-b-c-d-e-f-g-h".to_owned(), sector_id: 987, checksum: "abcde".to_owned() });
+        assert_eq!(rooms[2], Room { encrypted_name: "not-a-real-room".to_owned(), sector_id: 404, checksum: "oarel".to_owned() });
+        assert_eq!(rooms[3], Room { encrypted_name: "totally-real-room".to_owned(), sector_id: 200, checksum: "decoy".to_owned() });
     }
 
     #[test]
     fn checking() {
-        let rooms = Room::parse("aaaaa-bbb-z-y-x-123[abxyz]\na-b-c-d-e-f-g-h-987[abcde]\nnot-a-real-room-404[oarel]\ntotally-real-room-200[decoy]");
+        let rooms = Room::parse("aaaaa-bbb-z-y-x-123[abxyz]\na-b-c-d-e-f-g-h-987[abcde]\nnot-a-real-room-404[oarel]\ntotally-real-room-200[decoy]").unwrap();
         assert!( rooms[0].is_real());
         assert!( rooms[1].is_real());
         assert!( rooms[2].is_real());
@@ -100,7 +106,7 @@ mod tests {
 
     #[test]
     fn decrypting() {
-        let rooms = Room::parse("qzmt-zixmtkozy-ivhz-343[]");
-        assert_eq!(rooms[0].name(), "very encrypted name");
+        let rooms = Room::parse("qzmt-zixmtkozy-ivhz-343[]").unwrap();
+        assert_eq!(rooms[0].name(), Ok("very encrypted name".to_owned()));
     }
 }

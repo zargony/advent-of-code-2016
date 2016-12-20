@@ -1,5 +1,6 @@
 use std::iter::FromIterator;
 
+
 /// Directional move
 #[derive(Debug, PartialEq, Eq)]
 pub enum Move {
@@ -9,6 +10,7 @@ pub enum Move {
     Right,
 }
 
+// FIXME: Should use TryFrom (still feature-gated)
 impl From<char> for Move {
     fn from(ch: char) -> Move {
         match ch {
@@ -16,20 +18,21 @@ impl From<char> for Move {
             'D' => Move::Down,
             'L' => Move::Left,
             'R' => Move::Right,
-            _ => panic!("Illegal move"),
+            _ => panic!("Invalid move format"),
         }
     }
 }
 
 impl Move {
-    fn parse(s: &str) -> Vec<Move> {
-        s.chars().map(|ch| Move::from(ch)).collect()
+    fn parse(s: &str) -> Result<Vec<Move>, &'static str> {
+        Ok(s.chars().map(|ch| Move::from(ch)).collect())
     }
 
-    fn parse_lines(s: &str) -> Vec<Vec<Move>> {
-        s.lines().map(|l| Move::parse(l)).collect()
+    fn parse_lines(s: &str) -> Result<Vec<Vec<Move>>, &'static str> {
+        s.lines().map(|line| Move::parse(line)).collect()
     }
 }
+
 
 /// A generic keypad
 #[derive(Debug, PartialEq, Eq)]
@@ -99,13 +102,15 @@ impl<'a> Keypad<'a> {
     }
 }
 
+
 fn main() {
-    let moves = Move::parse_lines(include_str!("day02.txt"));
+    let moves = Move::parse_lines(include_str!("day02.txt")).unwrap();
     let kp = Keypad::new_3x3();
     println!("Bathroom code: {}", kp.walk_n_str('5', &moves));
     let kp = Keypad::new_bathroom();
     println!("Correct bathroom code: {}", kp.walk_n_str('5', &moves));
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -113,10 +118,10 @@ mod tests {
 
     #[test]
     fn parsing() {
-        assert_eq!(Move::parse("ULL"), [Move::Up, Move::Left, Move::Left]);
-        assert_eq!(Move::parse("RRDDD"), [Move::Right, Move::Right, Move::Down, Move::Down, Move::Down]);
-        assert_eq!(Move::parse("LURDL"), [Move::Left, Move::Up, Move::Right, Move::Down, Move::Left]);
-        assert_eq!(Move::parse("UUUUD"), [Move::Up, Move::Up, Move::Up, Move::Up, Move::Down]);
+        assert_eq!(Move::parse("ULL"), Ok(vec![Move::Up, Move::Left, Move::Left]));
+        assert_eq!(Move::parse("RRDDD"), Ok(vec![Move::Right, Move::Right, Move::Down, Move::Down, Move::Down]));
+        assert_eq!(Move::parse("LURDL"), Ok(vec![Move::Left, Move::Up, Move::Right, Move::Down, Move::Left]));
+        assert_eq!(Move::parse("UUUUD"), Ok(vec![Move::Up, Move::Up, Move::Up, Move::Up, Move::Down]));
     }
 
     #[test]
@@ -138,32 +143,32 @@ mod tests {
     #[test]
     fn walking() {
         let kp = Keypad::new_3x3();
-        assert_eq!(kp.walk('5', &Move::parse("ULL")), '1');
-        assert_eq!(kp.walk('1', &Move::parse("RRDDD")), '9');
-        assert_eq!(kp.walk('9', &Move::parse("LURDL")), '8');
-        assert_eq!(kp.walk('8', &Move::parse("UUUUD")), '5');
+        assert_eq!(kp.walk('5', &Move::parse("ULL").unwrap()), '1');
+        assert_eq!(kp.walk('1', &Move::parse("RRDDD").unwrap()), '9');
+        assert_eq!(kp.walk('9', &Move::parse("LURDL").unwrap()), '8');
+        assert_eq!(kp.walk('8', &Move::parse("UUUUD").unwrap()), '5');
     }
 
     #[test]
     fn walking_n() {
         let kp = Keypad::new_3x3();
-        assert_eq!(kp.walk_n('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), ['1', '9', '8', '5']);
-        assert_eq!(kp.walk_n_str('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), "1985");
+        assert_eq!(kp.walk_n('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD").unwrap()), ['1', '9', '8', '5']);
+        assert_eq!(kp.walk_n_str('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD").unwrap()), "1985");
     }
 
     #[test]
     fn bathroom_walking() {
         let kp = Keypad::new_bathroom();
-        assert_eq!(kp.walk('5', &Move::parse("ULL")), '5');
-        assert_eq!(kp.walk('5', &Move::parse("RRDDD")), 'D');
-        assert_eq!(kp.walk('D', &Move::parse("LURDL")), 'B');
-        assert_eq!(kp.walk('B', &Move::parse("UUUUD")), '3');
+        assert_eq!(kp.walk('5', &Move::parse("ULL").unwrap()), '5');
+        assert_eq!(kp.walk('5', &Move::parse("RRDDD").unwrap()), 'D');
+        assert_eq!(kp.walk('D', &Move::parse("LURDL").unwrap()), 'B');
+        assert_eq!(kp.walk('B', &Move::parse("UUUUD").unwrap()), '3');
     }
 
     #[test]
     fn bathroom_walking_n() {
         let kp = Keypad::new_bathroom();
-        assert_eq!(kp.walk_n('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), ['5', 'D', 'B', '3']);
-        assert_eq!(kp.walk_n_str('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD")), "5DB3");
+        assert_eq!(kp.walk_n('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD").unwrap()), ['5', 'D', 'B', '3']);
+        assert_eq!(kp.walk_n_str('5', &Move::parse_lines("ULL\nRRDDD\nLURDL\nUUUUD").unwrap()), "5DB3");
     }
 }

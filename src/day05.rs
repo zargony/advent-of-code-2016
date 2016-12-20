@@ -4,6 +4,7 @@ extern crate time;
 use std::fmt::Write as fmtWrite;
 use std::io::Write as ioWrite;
 
+
 /// A hash finder uses a brute force approach to find a hash
 /// with a starting zeroes for a given prefix
 pub struct HashFinder {
@@ -32,16 +33,16 @@ impl Iterator for HashFinder {
     fn next(&mut self) -> Option<(u8, u8)> {
         loop {
             let mut ctx = self.ctx.clone();
-            // ctx.consume(format!("{}", self.pad).as_bytes());
             ctx.write_fmt(format_args!("{}", self.pad)).unwrap();
-            let hash = ctx.compute();
+            let digest = ctx.compute();
             self.pad += 1;
-            if hash[0..2] == [0; 2] && hash[2] & 0xf0 == 0 {
-                return Some((hash[2] & 0x0f, hash[3] >> 4));
+            if digest[0..2] == [0; 2] && digest[2] & 0xf0 == 0 {
+                return Some((digest[2] & 0x0f, digest[3] >> 4));
             }
         }
     }
 }
+
 
 /// Helper function for displaying a nibble
 fn nibble2char(n: u8) -> char {
@@ -83,13 +84,14 @@ fn measure_time<T, F: FnMut() -> T>(mut f: F) -> (T, f64) {
 }
 
 fn main() {
-    let input = "wtnhxymk";
-    let (password, duration1) = measure_time(|| find_password(input, 8));
+    const INPUT: &'static str = "wtnhxymk";
+    let (password, duration1) = measure_time(|| find_password(INPUT, 8));
     println!("Password (found in {:5.3}s): {}", duration1, password);
-    let (password, duration2) = measure_time(|| find_enhanced_password(input, 8));
+    let (password, duration2) = measure_time(|| find_enhanced_password(INPUT, 8));
     println!("Enhanced password (found in {:5.3}s): {}", duration2, password);
     println!("Total time: {:5.3}s", duration1 + duration2);
 }
+
 
 #[cfg(test)]
 mod tests {

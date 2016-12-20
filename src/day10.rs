@@ -6,12 +6,14 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+
 /// Target of a bot can be either another bot or an output box
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Target {
     Bot(u8),
     Output(u8),
 }
+
 
 /// Source of a bot can either be the low or high output of another bot or
 /// a value from an input box
@@ -21,6 +23,7 @@ pub enum Source {
     BotLow(u8),
     BotHigh(u8),
 }
+
 
 /// Bot instruction
 #[derive(Debug, PartialEq, Eq)]
@@ -74,10 +77,11 @@ impl FromStr for Instruction {
 
 impl Instruction {
     /// Parse a multiline-text to a vector of instructions
-    fn parse(s: &str) -> Vec<Instruction> {
-        s.lines().map(|line| Instruction::from_str(line).unwrap()).collect()
+    fn parse(s: &str) -> Result<Vec<Instruction>, nom::ErrorKind> {
+        s.lines().map(|line| line.parse()).collect()
     }
 }
+
 
 /// A bot in the factory
 #[derive(Debug, PartialEq, Eq)]
@@ -94,6 +98,7 @@ impl Bot {
     }
 }
 
+
 /// A factory
 #[derive(Debug, PartialEq, Eq)]
 pub struct Factory {
@@ -102,10 +107,12 @@ pub struct Factory {
 }
 
 impl FromStr for Factory {
-    type Err = ();
+    type Err = nom::ErrorKind;
 
-    fn from_str(s: &str) -> Result<Factory, ()> {
-        Ok(Factory::from(Instruction::parse(s)))
+    fn from_str(s: &str) -> Result<Factory, nom::ErrorKind> {
+        Instruction::parse(s).map(|instructions|
+            Factory::from(instructions)
+        )
     }
 }
 
@@ -207,8 +214,9 @@ impl Factory {
     }
 }
 
+
 fn main() {
-    let factory = Factory::from_str(include_str!("day10.txt")).unwrap();
+    let factory: Factory = include_str!("day10.txt").parse().unwrap();
     println!("Bot responsible for value-61 and value-17: {}", factory.bot_with_input_values(61, 17).unwrap());
     let output_product = factory.value_of_output(0).unwrap() as u32
         * factory.value_of_output(1).unwrap() as u32
@@ -216,21 +224,21 @@ fn main() {
     println!("Product of outputs 0, 1 and 2: {}", output_product);
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn parsing() {
-        assert_eq!(Instruction::from_str("value 5 goes to bot 2"), Ok(Instruction::ValueToBot(5, 2)));
-        assert_eq!(Instruction::from_str("bot 2 gives low to bot 1 and high to bot 0"), Ok(Instruction::BotToTarget(2, Target::Bot(1), Target::Bot(0))));
-        assert_eq!(Instruction::from_str("bot 1 gives low to output 1 and high to bot 0"), Ok(Instruction::BotToTarget(1, Target::Output(1), Target::Bot(0))));
+        assert_eq!("value 5 goes to bot 2".parse(), Ok(Instruction::ValueToBot(5, 2)));
+        assert_eq!("bot 2 gives low to bot 1 and high to bot 0".parse(), Ok(Instruction::BotToTarget(2, Target::Bot(1), Target::Bot(0))));
+        assert_eq!("bot 1 gives low to output 1 and high to bot 0".parse(), Ok(Instruction::BotToTarget(1, Target::Output(1), Target::Bot(0))));
     }
 
     #[test]
     fn finding_values() {
-        let factory = Factory::from_str("value 5 goes to bot 2\nbot 2 gives low to bot 1 and high to bot 0\nvalue 3 goes to bot 1\nbot 1 gives low to output 1 and high to bot 0\nbot 0 gives low to output 2 and high to output 0\nvalue 2 goes to bot 2").unwrap();
+        let factory: Factory = "value 5 goes to bot 2\nbot 2 gives low to bot 1 and high to bot 0\nvalue 3 goes to bot 1\nbot 1 gives low to output 1 and high to bot 0\nbot 0 gives low to output 2 and high to output 0\nvalue 2 goes to bot 2".parse().unwrap();
         assert_eq!(factory.input_values_for_bot(2), Some(vec![5, 2]));
         assert_eq!(factory.bot_with_input_values(5, 2), Some(2));
         assert_eq!(factory.value_of_output(0), Some(5));

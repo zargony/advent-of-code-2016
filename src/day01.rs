@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
+
 /// Turning direction of a step
 #[derive(Debug, PartialEq, Eq)]
 pub enum Turn {
@@ -15,10 +16,11 @@ impl FromStr for Turn {
         match s.as_ref() {
             "L" => Ok(Turn::Left),
             "R" => Ok(Turn::Right),
-            _ => Err("Illegal turn"),
+            _ => Err("Invalid turn format"),
         }
     }
 }
+
 
 /// A step consists of an initial turn (left or right) and
 /// a number of steps to walk into the new direction
@@ -33,8 +35,8 @@ impl FromStr for Step {
 
     fn from_str(s: &str) -> Result<Step, &'static str> {
         Ok(Step {
-            turn: try!(Turn::from_str(&s[0..1])),
-            dist: try!(i32::from_str(&s[1..]).map_err(|_| "illegal step distance")),
+            turn: try!(s[0..1].parse()),
+            dist: try!(s[1..].parse().map_err(|_| "Invalid step distance format")),
         })
     }
 }
@@ -42,13 +44,10 @@ impl FromStr for Step {
 impl Step {
     /// Parse a comma-separated string of step instructions. Returns a vector of steps
     fn parse(input: &str) -> Result<Vec<Step>, &'static str> {
-        let mut steps = Vec::new();
-        for s in input.split(',') {
-            steps.push(try!(Step::from_str(s.trim())));
-        }
-        Ok(steps)
+        input.split(',').map(|s| s.trim().parse()).collect()
     }
 }
+
 
 /// Cardinal direction
 #[derive(Debug, PartialEq, Eq)]
@@ -74,6 +73,7 @@ impl Direction {
         }
     }
 }
+
 
 /// Position on a cartesian plane (x and y) and heading (cardinal direction)
 #[derive(Debug, PartialEq, Eq)]
@@ -137,6 +137,7 @@ impl Position {
     }
 }
 
+
 fn main() {
     let steps = Step::parse(include_str!("day01.txt")).unwrap();
     let pos = Position::walked(&steps, false);
@@ -149,11 +150,10 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn parsing() {
-        assert_eq!(Step::from_str("R2"), Ok(Step { turn: Turn::Right, dist: 2 }));
+        assert_eq!("R2".parse(), Ok(Step { turn: Turn::Right, dist: 2 }));
         assert_eq!(Step::parse("R2, L3"), Ok(vec![Step { turn: Turn::Right, dist: 2 }, Step { turn: Turn::Left, dist: 3 }]));
     }
 

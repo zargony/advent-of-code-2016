@@ -33,10 +33,11 @@ pub fn decompressed_size_recursive(s: &str) -> usize {
 }
 
 fn main() {
-    let input = include_str!("day09.txt");
-    println!("Length of decompressed file: {}", decompress(input).len());
-    println!("Length of recursively decompressed file: {}", decompressed_size_recursive(input));
+    const INPUT: &'static str = include_str!("day09.txt");
+    println!("Length of decompressed file: {}", decompress(INPUT).len());
+    println!("Length of recursively decompressed file: {}", decompressed_size_recursive(INPUT));
 }
+
 
 #[cfg(test)]
 mod tests {

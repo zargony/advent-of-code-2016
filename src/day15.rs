@@ -4,6 +4,7 @@ extern crate nom;
 use std::str::FromStr;
 use nom::digit;
 
+
 /// A rotating disc
 #[derive(Debug, PartialEq, Eq)]
 pub struct Disc {
@@ -31,8 +32,8 @@ impl FromStr for Disc {
 
 impl Disc {
     /// Parse a multiline-text to a vector of discs
-    fn parse(s: &str) -> Vec<Disc> {
-        s.lines().map(|line| Disc::from_str(line).unwrap()).collect()
+    fn parse(s: &str) -> Result<Vec<Disc>, nom::ErrorKind> {
+        s.lines().map(|line| line.parse()).collect()
     }
 
     /// Determine if the sphere can pass at the given time
@@ -40,6 +41,7 @@ impl Disc {
         (t + self.num + self.offset) % self.positions == 0
     }
 }
+
 
 /// Find earliest time at which a sphere can pass through all discs
 pub fn time_at_which_sphere_can_pass(discs: &[Disc]) -> u32 {
@@ -51,27 +53,27 @@ pub fn time_at_which_sphere_can_pass(discs: &[Disc]) -> u32 {
 }
 
 fn main() {
-    let mut discs = Disc::parse(include_str!("day15.txt"));
+    let mut discs = Disc::parse(include_str!("day15.txt")).unwrap();
     println!("Time to press the button to get a capsule: {}", time_at_which_sphere_can_pass(&discs));
     let extra_disc = Disc { num: discs.len() as u32 + 1, positions: 11, offset: 0 };
     discs.push(extra_disc);
     println!("Time to press the button w/extra disc: {}", time_at_which_sphere_can_pass(&discs));
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn parsing() {
-        assert_eq!(Disc::from_str("Disc #1 has 5 positions; at time=0, it is at position 4."), Ok(Disc { num: 1, positions: 5, offset: 4 }));
-        assert_eq!(Disc::from_str("Disc #2 has 2 positions; at time=0, it is at position 1."), Ok(Disc { num: 2, positions: 2, offset: 1 }));
+        assert_eq!("Disc #1 has 5 positions; at time=0, it is at position 4.".parse(), Ok(Disc { num: 1, positions: 5, offset: 4 }));
+        assert_eq!("Disc #2 has 2 positions; at time=0, it is at position 1.".parse(), Ok(Disc { num: 2, positions: 2, offset: 1 }));
     }
 
     #[test]
     fn name() {
-        let discs = Disc::parse("Disc #1 has 5 positions; at time=0, it is at position 4.\nDisc #2 has 2 positions; at time=0, it is at position 1.");
+        let discs = Disc::parse("Disc #1 has 5 positions; at time=0, it is at position 4.\nDisc #2 has 2 positions; at time=0, it is at position 1.").unwrap();
         assert!( discs[0].sphere_can_pass(0));
         assert!(!discs[1].sphere_can_pass(0));
         assert!( discs[0].sphere_can_pass(5));

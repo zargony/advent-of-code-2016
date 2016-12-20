@@ -1,6 +1,7 @@
 use std::fmt;
 use std::collections::HashSet;
 
+
 /// A Maze of office cubicles
 pub struct Maze {
     seed: u32,
@@ -35,6 +36,7 @@ impl Maze {
     }
 }
 
+
 /// Maze display helper
 pub struct MazeDisplay<'a> {
     maze: &'a Maze,
@@ -58,6 +60,7 @@ impl<'a> fmt::Display for MazeDisplay<'a> {
         Ok(())
     }
 }
+
 
 /// Maze path finder
 pub struct PathFinder<'a> {
@@ -110,6 +113,7 @@ impl<'a> Iterator for PathFinder<'a> {
     }
 }
 
+
 fn main() {
     let maze = Maze::new(1362);
     //print!("{}", maze.display(50, 50));
@@ -126,6 +130,7 @@ fn main() {
     });
     println!("Number of different locations in at most 50 steps: {}", locations.len());
 }
+
 
 #[cfg(test)]
 mod tests {

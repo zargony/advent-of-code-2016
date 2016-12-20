@@ -2,6 +2,7 @@ extern crate onig;
 
 use onig::Regex;
 
+
 pub fn count_tls_ips(input: &str) -> usize {
     let re1 = Regex::new("\\[[a-z]*([a-z])(?!\\1)([a-z])\\2\\1").unwrap();
     let re2 = Regex::new("([a-z])(?!\\1)([a-z])\\2\\1").unwrap();
@@ -19,10 +20,11 @@ pub fn count_ssl_ips(input: &str) -> usize {
 }
 
 fn main() {
-    let input = include_str!("day07.txt");
-    println!("Number of IPs with TLS support: {}", count_tls_ips(input));
-    println!("Number of IPs with SSL support: {}", count_ssl_ips(input));
+    const INPUT: &'static str = include_str!("day07.txt");
+    println!("Number of IPs with TLS support: {}", count_tls_ips(INPUT));
+    println!("Number of IPs with SSL support: {}", count_ssl_ips(INPUT));
 }
+
 
 #[cfg(test)]
 mod tests {

@@ -5,6 +5,7 @@ use std::{env, fmt};
 
 pub use self::Thing::*;
 
+
 macro_rules! set {
     () => ( ::std::collections::BTreeSet::new() );
     ($($x:expr),*) => ({
@@ -14,6 +15,7 @@ macro_rules! set {
     });
     ($($x:expr,)*) => ( set![$($x),*] )
 }
+
 
 /// Things that can be moved around
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
@@ -30,6 +32,7 @@ impl fmt::Display for Thing {
         }
     }
 }
+
 
 /// Current arrangement of things
 #[derive(PartialEq, Eq, Clone)]
@@ -181,6 +184,7 @@ impl State {
     }
 }
 
+
 fn main() {
     let mut state = State::new(vec![
         // The first floor contains a polonium generator, a thulium generator, a thulium-compatible microchip,
@@ -204,6 +208,7 @@ fn main() {
         println!("Minimum number of steps with extra parts: {}", state.min_steps());
     }
 }
+
 
 #[cfg(test)]
 mod tests {

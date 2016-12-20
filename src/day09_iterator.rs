@@ -1,5 +1,6 @@
 use std::str;
 
+
 pub struct Repeat<'a> {
     count: usize,
     chars: str::Chars<'a>,
@@ -33,6 +34,7 @@ impl<'a> Repeat<'a> {
         self.iter.as_str()
     }
 }
+
 
 pub struct Decompressor<'a> {
     iters: Vec<Repeat<'a>>,
@@ -70,11 +72,13 @@ impl<'a> Decompressor<'a> {
     }
 }
 
+
 fn main() {
-    let input = include_str!("day09.txt");
-    println!("Length of decompressed file: {}", Decompressor::new(input, false).count());
-    println!("Length of recursively decompressed file: {}", Decompressor::new(input, true).count());
+    const INPUT: &'static str = include_str!("day09.txt");
+    println!("Length of decompressed file: {}", Decompressor::new(INPUT, false).count());
+    println!("Length of recursively decompressed file: {}", Decompressor::new(INPUT, true).count());
 }
+
 
 #[cfg(test)]
 mod tests {

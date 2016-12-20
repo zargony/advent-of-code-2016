@@ -5,6 +5,7 @@ use std::cmp;
 use std::fmt::{self, Write};
 use std::str::{self, FromStr};
 
+
 /// An operation is an instruction to modify pixels on a display
 #[derive(Debug, PartialEq, Eq)]
 pub enum Operation {
@@ -48,10 +49,11 @@ impl FromStr for Operation {
 
 impl Operation {
     /// Parse a multiline-text to a vector of operations
-    fn parse(s: &str) -> Vec<Operation> {
-        s.lines().map(|line| Operation::from_str(line).unwrap()).collect()
+    fn parse(s: &str) -> Result<Vec<Operation>, nom::ErrorKind> {
+        s.lines().map(|line| line.parse()).collect()
     }
 }
+
 
 /// A rectangular display with monochromatic pixels
 #[derive(Debug, PartialEq, Eq)]
@@ -63,7 +65,10 @@ impl fmt::Display for Display {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for y in 0..self.pixels.len() {
             for x in 0..self.pixels[y].len() {
-                try!(f.write_char(if self.pixels[y][x] { '#' } else { '.' }));
+                match self.pixels[y][x] {
+                    false => try!(f.write_char('.')),
+                    true => try!(f.write_char('#')),
+                }
             }
             try!(f.write_str("\n"));
         }
@@ -127,24 +132,25 @@ impl Display {
     }
 }
 
+
 fn main() {
-    let operations = Operation::parse(include_str!("day08.txt"));
+    let operations = Operation::parse(include_str!("day08.txt")).unwrap();
     let mut display = Display::new(50, 6);
     display.run(&operations);
     println!("Lit pixels on display: {}", display.count_lit());
     println!("{}", display);
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn parsing() {
-        assert_eq!(Operation::from_str("rect 12x34"), Ok(Operation::Rect { width: 12, height: 34 }));
-        assert_eq!(Operation::from_str("rotate row y=23 by 45"), Ok(Operation::RotateRow { row: 23, count: 45 }));
-        assert_eq!(Operation::from_str("rotate column x=34 by 56"), Ok(Operation::RotateColumn { column: 34, count: 56 }));
+        assert_eq!("rect 12x34".parse(), Ok(Operation::Rect { width: 12, height: 34 }));
+        assert_eq!("rotate row y=23 by 45".parse(), Ok(Operation::RotateRow { row: 23, count: 45 }));
+        assert_eq!("rotate column x=34 by 56".parse(), Ok(Operation::RotateColumn { column: 34, count: 56 }));
     }
 
     #[test]

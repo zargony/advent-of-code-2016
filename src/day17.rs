@@ -2,6 +2,7 @@ extern crate md5;
 
 use std::{fmt, iter};
 
+
 /// Direction
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Direction {
@@ -14,6 +15,7 @@ impl fmt::Display for Direction {
         f.write_str(match *self { Up => "U", Down => "D", Left => "L", Right => "R" })
     }
 }
+
 
 /// Path through rooms (a sequence of directions)
 pub struct Path {
@@ -81,6 +83,7 @@ impl Path {
     }
 }
 
+
 /// Finds valid paths from (0,0) to (3,3) using breadth-first search (i.e. the
 /// first path found will be (one of) the shortest possible paths)
 #[derive(Debug)]
@@ -128,14 +131,16 @@ impl Iterator for PathFinder {
     }
 }
 
+
 fn main() {
-    let input = "yjjvjgan";
-    let mut finder = PathFinder::new(input);
+    const INPUT: &'static str = "yjjvjgan";
+    let mut finder = PathFinder::new(INPUT);
     let shortest_path = finder.next().unwrap();
-    println!("Shortest path for passcode '{}': {}", input, shortest_path);
+    println!("Shortest path for passcode '{}': {}", INPUT, shortest_path);
     let longest_path = finder.max_by_key(|p| p.len()).unwrap();
-    println!("Length of longest path for passcode '{}': {}", input, longest_path.len());
+    println!("Length of longest path for passcode '{}': {}", INPUT, longest_path.len());
 }
+
 
 #[cfg(test)]
 mod tests {
