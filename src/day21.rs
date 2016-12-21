@@ -12,6 +12,7 @@ pub enum Instruction {
     RotateLeft(usize),
     RotateRight(usize),
     RotateAtLetter(char),
+    InverseRotateAtLetter(char),
     Reverse(usize, usize),
     Move(usize, usize),
 }
@@ -110,6 +111,17 @@ impl Instruction {
                 let rotated: Vec<u8> = bytes[i..].iter().chain(bytes[..i].iter()).cloned().collect();
                 *bytes = rotated;
             },
+            Instruction::InverseRotateAtLetter(x) => {
+                for i in 1..bytes.len() {
+                    let rotated: Vec<u8> = bytes[i..].iter().chain(bytes[..i].iter()).cloned().collect();
+                    let mut s = String::from_utf8(rotated.clone()).unwrap();
+                    Instruction::RotateAtLetter(x).apply(&mut s);
+                    if s.as_bytes() == bytes.as_slice() {
+                        *bytes = rotated;
+                        break;
+                    }
+                }
+            },
             Instruction::Reverse(mut x, mut y) => {
                 while y > x {
                     bytes.swap(x, y);
@@ -121,6 +133,20 @@ impl Instruction {
                 let ch = bytes.remove(x);
                 bytes.insert(y, ch);
             },
+        }
+    }
+
+    /// The inverse instruction
+    fn inverse(&self) -> Instruction {
+        match *self {
+            Instruction::Swap(x, y) => Instruction::Swap(x, y),
+            Instruction::SwapLetter(x, y) => Instruction::SwapLetter(x, y),
+            Instruction::RotateLeft(x) => Instruction::RotateRight(x),
+            Instruction::RotateRight(x) => Instruction::RotateLeft(x),
+            Instruction::RotateAtLetter(x) => Instruction::InverseRotateAtLetter(x),
+            Instruction::InverseRotateAtLetter(x) => Instruction::RotateAtLetter(x),
+            Instruction::Reverse(x, y) => Instruction::Reverse(x, y),
+            Instruction::Move(x, y) => Instruction::Move(y, x),
         }
     }
 }
@@ -147,12 +173,21 @@ impl Scrambler {
             res
         })
     }
+
+    /// Unscramble the given password
+    fn unscramble(&self, s: &str) -> String {
+        self.instructions.iter().rev().fold(s.to_owned(), |mut res, ins| {
+            ins.inverse().apply(&mut res);
+            res
+        })
+    }
 }
 
 
 fn main() {
     let scrambler = Scrambler::new(include_str!("day21.txt")).unwrap();
     println!("Scrambled password: {}", scrambler.scramble("abcdefgh"));
+    println!("Unscrambled password: {}", scrambler.unscramble("fbgdceah"));
 }
 
 
@@ -197,5 +232,13 @@ mod tests {
     fn scrambling() {
         let scrambler = Scrambler::new("swap position 4 with position 0\nswap letter d with letter b\nreverse positions 0 through 4\nrotate left 1 step\nmove position 1 to position 4\nmove position 3 to position 0\nrotate based on position of letter b\nrotate based on position of letter d").unwrap();
         assert_eq!(scrambler.scramble("abcde"), "decab");
+        assert_eq!(scrambler.unscramble("decab"), "abcde");
+    }
+
+    #[test]
+    fn real_data() {
+        let scrambler = Scrambler::new(include_str!("day21.txt")).unwrap();
+        assert_eq!(scrambler.scramble("abcdefgh"), "dbfgaehc");
+        assert_eq!(scrambler.unscramble("fbgdceah"), "aghfcdeb");
     }
 }
