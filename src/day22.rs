@@ -1,11 +1,12 @@
 #[macro_use]
 extern crate nom;
 
+use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 use nom::{space, digit};
 
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Node {
     x: usize,
     y: usize,
@@ -49,6 +50,7 @@ impl Node {
 
 
 /// A rectangular cluster of nodes
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Cluster {
     nodes: Vec<Vec<Node>>,
 }
@@ -66,12 +68,10 @@ impl Cluster {
     }
 
     /// Width
-    #[allow(dead_code)]
     #[inline]
     fn width(&self) -> usize { self.nodes.len() }
 
     /// Height
-    #[allow(dead_code)]
     #[inline]
     fn height(&self) -> usize { self.nodes[0].len() }
 
@@ -81,12 +81,100 @@ impl Cluster {
             self.nodes.iter().flat_map(|col| col.iter()).filter(|b| a.used < b.avail).count()
         }).sum()
     }
+
+    /// Get node at given position
+    #[inline]
+    fn get(&self, x: usize, y: usize) -> &Node {
+        &self.nodes[x][y]
+    }
+
+    /// Get node at given position
+    #[inline]
+    fn get_mut(&mut self, x: usize, y: usize) -> &mut Node {
+        &mut self.nodes[x][y]
+    }
+
+    /// Move all data from one node to another (empty) node
+    fn move_data(&mut self, x1: usize, y1: usize, x2: usize, y2: usize) {
+        assert!(self.get(x2, y2).used == 0);
+        assert!(self.get(x2, y2).avail > self.get(x1, y1).used);
+        self.get_mut(x2, y2).used += self.get(x1, y1).used;
+        self.get_mut(x2, y2).avail -= self.get(x1, y1).used;
+        self.get_mut(x1, y1).avail += self.get(x1, y1).used;
+        self.get_mut(x1, y1).used = 0;
+    }
+
+    /// Returns a new cluster state with the given data movement applied
+    fn with_moved_data(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> Cluster {
+        let mut cluster = self.clone();
+        cluster.move_data(x1, y1, x2, y2);
+        cluster
+    }
+
+    /// Returns neighbors of the node at the given position
+    fn neighbors(&self, x: usize, y: usize) -> Vec<&Node> {
+        [
+            if y > 0               { Some(self.get(x, y-1)) } else { None },
+            if y < self.height()-1 { Some(self.get(x, y+1)) } else { None },
+            if x > 0               { Some(self.get(x-1, y)) } else { None },
+            if x < self.width()-1  { Some(self.get(x+1, y)) } else { None },
+        ].iter().filter_map(|n| *n).collect()
+    }
+
+    /// Move data around to free the given position. Returns a tuple with the
+    /// number of steps taken and the final cluster with the given position freed
+    fn free(&self, x: usize, y: usize, blacklist: &[(usize, usize)]) -> Option<(usize, Cluster)> {
+        let mut states: VecDeque<_> = self.nodes.iter()
+            .flat_map(|col| col.iter())
+            .filter(|node| node.used == 0)
+            .map(|node| (0, (node.x, node.y), self.clone()))
+            .collect();
+        let mut shortest: HashMap<(usize, usize), usize> = HashMap::new();
+        while let Some((depth, (xx, yy), cluster)) = states.pop_front() {
+            let node = cluster.get(xx, yy);
+            debug_assert!(node.used == 0);
+            for neighbor in self.neighbors(xx, yy) {
+                if blacklist.contains(&(neighbor.x, neighbor.y)) {
+                    continue;
+                }
+                if let Some(&dist) = shortest.get(&(neighbor.x, neighbor.y)) {
+                    if dist <= depth {
+                        continue;
+                    }
+                }
+                if node.avail > neighbor.used {
+                    shortest.insert((neighbor.x, neighbor.y), depth);
+                    let new_cluster = cluster.with_moved_data(neighbor.x, neighbor.y, node.x, node.y);
+                    if neighbor.x == x && neighbor.y == y {
+                        return Some((depth + 1, new_cluster));
+                    }
+                    states.push_back((depth + 1, (neighbor.x, neighbor.y), new_cluster));
+                }
+            }
+        }
+        None
+    }
+
+    /// Count steps needed to move data from (x,0) to (0,0)
+    /// Strategy: free (x-1,0), move (x,0) to (x-1,0), then recurse with x-1
+    fn move_top_data(&self, x: usize) -> Option<usize> {
+        if x == 0 {
+            return Some(0);
+        }
+        self.free(x - 1, 0, &[(x, 0)]).and_then(|(steps, cluster)| {
+            cluster.with_moved_data(x, 0, x - 1, 0).move_top_data(x - 1).map(|s|
+                steps + 1 + s
+            )
+        })
+    }
 }
 
 
 fn main() {
     let cluster = Cluster::new(include_str!("day22.txt")).unwrap();
     println!("Viable pairs of nodes: {}", cluster.count_viable_node_pairs());
+    let steps = cluster.move_top_data(cluster.width() - 1).unwrap();
+    println!("Fewest number of steps to move top right node to top left corner: {}", steps);
 }
 
 
@@ -113,5 +201,11 @@ Filesystem            Size  Used  Avail  Use%\r
         let cluster = Cluster::new(TEST_DATA).unwrap();
         assert_eq!(cluster.width(), 3);
         assert_eq!(cluster.height(), 3);
+    }
+
+    #[test]
+    fn moving_top_data() {
+        let cluster = Cluster::new(TEST_DATA).unwrap();
+        assert_eq!(cluster.move_top_data(cluster.width() - 1), Some(7));
     }
 }
