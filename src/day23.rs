@@ -121,6 +121,35 @@ impl Cpu {
         )
     }
 
+    /// Detect addition loop. Returns a tuple with related registers.
+    /// 0: first summand, gets result, 1: second summand, gets zeroed
+    fn detect_add_loop(&self, ip: usize) -> Option<(u8, u8)> {
+        use Instruction::*;
+        use Value::*;
+        if ip >= 2 {
+            match (self.instructions[ip-2], self.instructions[ip-1], self.instructions[ip]) {
+                (Inc(tr), Dec(cr1), Jnz(Register(cr2), Immediate(-2))) if cr1==cr2 => return Some((tr, cr1)),
+                (Dec(cr1), Inc(tr), Jnz(Register(cr2), Immediate(-2))) if cr1==cr2 => return Some((tr, cr1)),
+                _ => (),
+            }
+        }
+        None
+    }
+
+    /// Detect multiplication loop. Returns a tuple with related registers.
+    /// 0: gets increased by result, 1: first factor, 2: second factor, gets zeroed, 3: gets zeroed
+    fn detect_mul_loop(&self, ip: usize) -> Option<(u8, u8, u8, u8)> {
+        use Instruction::*;
+        use Value::*;
+        if ip >= 5 {
+            match (self.instructions[ip-5], self.detect_add_loop(ip-2), self.instructions[ip-1], self.instructions[ip]) {
+                (Cpy(Register(ar), Register(cr1)), Some((tr, cr2)), Dec(br1), Jnz(Register(br2), Immediate(-5))) if cr1==cr2 && br1==br2 => return Some((tr, ar, br1, cr1)),
+                _ => (),
+            }
+        }
+        None
+    }
+
     /// Step program. Returns true if done
     fn step(&mut self) -> bool {
         if self.ip >= self.instructions.len() {
@@ -133,10 +162,26 @@ impl Cpu {
                 Instruction::Cpy(ref v, Value::Register(y)) => self.regs[y as usize] = v.get(&self.regs),
                 Instruction::Inc(x) => self.regs[x as usize] += 1,
                 Instruction::Dec(x) => self.regs[x as usize] -= 1,
-                Instruction::Jnz(ref v1, ref v2) => if v1.get(&self.regs) != 0 {
-                    self.ip = (self.ip as i32 + v2.get(&self.regs)) as usize;
-                } else {
-                    self.ip += 1
+                Instruction::Jnz(ref v1, ref v2) => {
+                    if v1.get(&self.regs) != 0 {
+                        if let Some((x, y, z, zz)) = self.detect_mul_loop(ip) {
+                            // Optimized multiplication loop
+                            self.regs[x as usize] += self.regs[y as usize] * self.regs[z as usize];
+                            self.regs[z as usize] = 0;
+                            self.regs[zz as usize] = 0;
+                            self.ip += 1;
+                        } else if let Some((x, y)) = self.detect_add_loop(ip) {
+                            // Optimized addition loop
+                            self.regs[x as usize] += self.regs[y as usize];
+                            self.regs[y as usize] = 0;
+                            self.ip += 1;
+                        } else {
+                            // Unoptimized loop
+                            self.ip = (self.ip as i32 + v2.get(&self.regs)) as usize;
+                        }
+                    } else {
+                        self.ip += 1
+                    }
                 },
                 Instruction::Tgl(x) => {
                     let addr = self.ip + self.regs[x as usize] as usize;
