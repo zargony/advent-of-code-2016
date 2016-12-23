@@ -121,13 +121,6 @@ impl Cpu {
         )
     }
 
-    /// Reset CPU
-    #[allow(dead_code)]
-    fn reset(&mut self) {
-        self.ip = 0;
-        for reg in self.regs.iter_mut() { *reg = 0; }
-    }
-
     /// Step program. Returns true if done
     fn step(&mut self) -> bool {
         if self.ip >= self.instructions.len() {
@@ -171,7 +164,12 @@ fn main() {
     let mut cpu = Cpu::new(include_str!("day23.txt")).unwrap();
     cpu.regs[0] = 7;
     cpu.run();
-    println!("Value to send to the safe: {}", cpu.regs[0]);
+    println!("Value to send to the safe (7 eggs): {}", cpu.regs[0]);
+
+    let mut cpu = Cpu::new(include_str!("day23.txt")).unwrap();
+    cpu.regs[0] = 12;
+    cpu.run();
+    println!("Value to send to the safe (12 eggs): {}", cpu.regs[0]);
 }
 
 
