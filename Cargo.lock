@@ -6,6 +6,7 @@ dependencies = [
  "md5 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "onig 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "permutohedron 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -91,6 +92,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "permutohedron"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "pkg-config"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -128,6 +134,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum nom 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "628d6ee18ab0ca1c1feb3331caa6ad2e53f6053b2505662b90d194889bbcd571"
 "checksum onig 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9c9d96ce5ce6addc4ea6cf4ca7b1a38ced8de5a3ed56a20a018c92c423e72e02"
 "checksum onig_sys 61.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a35f2cca300f0945538564da6052a449db55e65870cf0e9d443c1bce3d5dda47"
+"checksum permutohedron 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "15205169997d28cfdc18e44d18bd34b70a0322a213e57bb968c22858ea70304f"
 "checksum pkg-config 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "8cee804ecc7eaf201a4a207241472cc870e825206f6c031e3ee2a72fa425f2fa"
 "checksum time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)" = "3c7ec6d62a20df54e07ab3b78b9a3932972f4b7981de295563686849eb3989af"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
